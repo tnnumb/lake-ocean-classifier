@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lake vs Ocean Classifier · CNN</title>
+<meta name="description" content="A CNN (MobileNetV2 transfer learning) that tells lake photos from ocean photos, running in your browser.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
+<style>
+  :root {
+    --ink: #0f2233;
+    --muted: #5b6b7a;
+    --line: #dfe6ec;
+    --bg: #f5f8fa;
+    --card: #ffffff;
+    --lake: #2f8f6b;
+    --ocean: #1f5fae;
+    --accent: #0e7c86;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--ink); background: var(--bg);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  header {
+    background: linear-gradient(160deg, #0b3a5b 0%, #0e6f7a 55%, #2f8f6b 100%);
+    color: #fff; padding: 48px 20px 88px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  header .wrap { padding: 0; }
+  .eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: 12px; opacity: .8; margin: 0 0 10px; }
+  h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.1; margin: 0 0 12px; letter-spacing: -.01em; }
+  header p.lead { max-width: 640px; margin: 0; font-size: 17px; opacity: .92; }
+
+  .app {
+    margin-top: -60px; background: var(--card); border-radius: var(--radius);
+    box-shadow: 0 10px 30px rgba(15, 34, 51, .12); padding: 24px;
+    display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px;
+  }
+  @media (max-width: 760px) { .app { grid-template-columns: 1fr; } }
+
+  .drop {
+    position: relative; border: 2px dashed #b9c7d3; border-radius: 12px; background: #fafcfd;
+    aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+    text-align: center; cursor: pointer; overflow: hidden; transition: border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.drag { border-color: var(--accent); background: #f0f8f8; }
+  .drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .drop .hint { padding: 20px; color: var(--muted); }
+  .drop .hint b { display: block; color: var(--ink); font-size: 18px; margin-bottom: 4px; }
+  .drop .hint .icon { font-size: 40px; display: block; margin-bottom: 8px; }
+  .row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  button.btn {
+    border: 0; background: var(--accent); color: #fff; font: inherit; font-weight: 600;
+    padding: 10px 16px; border-radius: 10px; cursor: pointer;
+  }
+  button.btn.secondary { background: #e8eef3; color: var(--ink); }
+  button.btn:focus-visible, .drop:focus-visible, .ex:focus-visible { outline: 3px solid #f2b705; outline-offset: 2px; }
+
+  .result h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 8px; }
+  .verdict { font-size: 34px; font-weight: 750; margin: 0 0 4px; min-height: 44px; }
+  .verdict.lake { color: var(--lake); } .verdict.ocean { color: var(--ocean); }
+  .sub { color: var(--muted); margin: 0 0 20px; min-height: 26px; }
+  .bar { margin-bottom: 16px; }
+  .bar .lbl { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 6px; }
+  .bar .track { height: 14px; background: #e8eef3; border-radius: 99px; overflow: hidden; }
+  .bar .fill { height: 100%; width: 0; border-radius: 99px; transition: width .5s ease; }
+  .bar.lake .fill { background: var(--lake); } .bar.ocean .fill { background: var(--ocean); }
+  .status { font-size: 14px; color: var(--muted); margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .status.err { color: #b42318; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+  section { margin: 48px auto; }
+  section h3 { font-size: 24px; margin: 0 0 6px; }
+  section > .wrap > p.intro { color: var(--muted); margin: 0 0 18px; }
+
+  .examples { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; }
+  @media (max-width: 760px) { .examples { grid-template-columns: repeat(4, 1fr); } }
+  .ex { position: relative; border: 0; padding: 0; border-radius: 10px; overflow: hidden; cursor: pointer; aspect-ratio: 1/1; background: #dde5ea; }
+  .ex img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s; }
+  .ex:hover img { transform: scale(1.05); }
+  .ex span { position: absolute; left: 6px; bottom: 6px; font-size: 11px; font-weight: 700; color: #fff; background: rgba(15,34,51,.7); padding: 2px 7px; border-radius: 99px; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .stat b { display: block; font-size: 28px; line-height: 1.1; }
+  .stat span { color: var(--muted); font-size: 14px; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { width: 34%; background: #f7fafc; font-weight: 600; }
+  tr:last-child th, tr:last-child td { border-bottom: 0; }
+
+  figure { margin: 0 0 22px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  figure img { width: 100%; height: auto; display: block; }
+  figcaption { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .two { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+
+  footer { border-top: 1px solid var(--line); padding: 24px 0 40px; color: var(--muted); font-size: 14px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">Machine Learning · Classification Project · KMITL</p>
+    <h1>🌊 Lake vs Ocean Classifier</h1>
+    <p class="lead">Upload a photo and a convolutional neural network (MobileNetV2 transfer learning) says whether it shows a
+      <b>lake</b> or an <b>ocean</b>, with the percentage for each. The model runs in your browser, so your photo is never uploaded anywhere.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="app">
+    <div>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a photo to classify">
+        <div class="hint" id="hint">
+          <span class="icon">📷</span>
+          <b>Drop a photo here</b>
+          or click to choose a file · you can also paste an image
+        </div>
+        <img id="preview" alt="" hidden>
+      </div>
+      <input type="file" id="file" accept="image/*" hidden>
+      <div class="row">
+        <button class="btn" id="choose">Choose photo</button>
+        <button class="btn secondary" id="random">Try a random example</button>
+      </div>
+    </div>
+
+    <div class="result" aria-live="polite">
+      <h2>Prediction</h2>
+      <p class="verdict" id="verdict">–</p>
+      <p class="sub" id="sub">Choose a photo or click an example below.</p>
+      <div class="bar lake"><div class="lbl"><span>Lake</span><span id="p-lake">–</span></div><div class="track"><div class="fill" id="f-lake"></div></div></div>
+      <div class="bar ocean"><div class="lbl"><span>Ocean</span><span id="p-ocean">–</span></div><div class="track"><div class="fill" id="f-ocean"></div></div></div>
+      <p class="note">The model only knows two classes, so every photo gets a lake % and an ocean % that add up to 100%.</p>
+      <div class="status" id="status">Loading model…</div>
+    </div>
+  </div>
+
+  <section>
+    <h3>Test images</h3>
+    <p class="intro">The 8 test images from the project (4 lakes, 4 oceans). Click one to classify it.</p>
+    <div class="examples" id="examples"></div>
+  </section>
+
+  <section>
+    <h3>Results</h3>
+    <p class="intro">Trained in Google Colab with TensorFlow / Keras.</p>
+    <div class="stats">
+      <div class="stat"><b>100%</b><span>Test accuracy (8 / 8)</span></div>
+      <div class="stat"><b>100%</b><span>Validation accuracy (22 / 22)</span></div>
+      <div class="stat"><b>90</b><span>Training images</span></div>
+      <div class="stat"><b>45</b><span>Epochs (30 + 15 fine-tuning)</span></div>
+    </div>
+    <figure>
+      <img src="figures/test_predictions.png" alt="Grid of the 8 test images with predicted class and percentages; all correct" loading="lazy">
+      <figcaption>Predictions on the 8 test images. Green = correct.</figcaption>
+    </figure>
+    <div class="two">
+      <figure>
+        <img src="figures/training_curves.png" alt="Training and validation accuracy and loss over 45 epochs" loading="lazy">
+        <figcaption>Accuracy and loss for each epoch. The dashed line is where fine-tuning starts.</figcaption>
+      </figure>
+      <figure>
+        <img src="figures/confusion_validation.png" alt="Validation confusion matrix with all 22 images correct" loading="lazy">
+        <figcaption>Validation confusion matrix.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h3>Model</h3>
+    <p class="intro">Transfer learning: a CNN pre-trained on ImageNet, plus a small new classifier trained on our images.</p>
+    <table>
+      <tr><th>Input</th><td>224 × 224 × 3 RGB image</td></tr>
+      <tr><th>Data augmentation (training only)</th><td>Horizontal flip, rotation ±18°, zoom ±10%, shift ±5%</td></tr>
+      <tr><th>CNN feature extractor</th><td>MobileNetV2 (154 layers, ImageNet weights); top 30 layers fine-tuned</td></tr>
+      <tr><th>Classifier head</th><td>Global Average Pooling (1280) → Dropout 0.4 → Dense <b>128</b> ReLU → Dropout 0.4 → Dense <b>2</b> softmax</td></tr>
+      <tr><th>Parameters</th><td>2,422,210</td></tr>
+      <tr><th>Optimizer</th><td>Adam: learning rate 0.001 (stage 1), 0.00001 (stage 2, fine-tuning)</td></tr>
+      <tr><th>Loss</th><td>Sparse categorical cross-entropy</td></tr>
+      <tr><th>Epochs / batch size</th><td>30 + 15 (early stopping, patience 6) / 16</td></tr>
+      <tr><th>Data split</th><td>90 train · 22 validation (24% of train) · 8 test. Duplicates of test images were removed from training.</td></tr>
+    </table>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    Machine Learning Classification Project · King Mongkut's Institute of Technology Ladkrabang (KMITL) ·
+    <a href="notebook/Lake_vs_Ocean_CNN.ipynb">Colab notebook</a> ·
+    Runs with <a href="https://onnxruntime.ai/" rel="noopener">ONNX Runtime Web</a>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.min.js"></script>
+<script>
+(() => {
+  const CLASSES = ["lake", "ocean"];
+  const SIZE = 224;
+  const EXAMPLES = [
+    "lake_test_1.jpg", "lake_test_2.jpg", "lake_test_3.jpg", "lake_test_4.jpg",
+    "ocean_test_1.jpg", "ocean_test_2.jpg", "ocean_test_3.jpg", "ocean_test_4.jpg",
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const drop = $("drop"), file = $("file"), preview = $("preview"), hint = $("hint");
+  const statusEl = $("status");
+
+  function setStatus(msg, isErr = false) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle("err", isErr);
+  }
+
+  // ---- Load the model ----
+  let session = null;
+  const ready = (async () => {
+    if (typeof ort === "undefined") throw new Error("ONNX Runtime didn't load (check your internet connection).");
+    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/";
+    ort.env.wasm.numThreads = 1;
+    session = await ort.InferenceSession.create("model/model.onnx", { executionProviders: ["wasm"] });
+    setStatus("Model ready ✓ (runs in your browser)");
+  })().catch((e) => {
+    console.error(e);
+    const hintMsg = location.protocol === "file:"
+      ? " Open this page through GitHub Pages (or a local web server), not by double-clicking the file."
+      : "";
+    setStatus("Couldn't load the model: " + e.message + hintMsg, true);
+    throw e;
+  });
+
+  // ---- Image → tensor (same as training: resize to 224×224, RGB 0–255; the model rescales itself) ----
+  const canvas = document.createElement("canvas");
+  canvas.width = SIZE; canvas.height = SIZE;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+  function toTensor(img) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.drawImage(img, 0, 0, SIZE, SIZE);
+    const rgba = ctx.getImageData(0, 0, SIZE, SIZE).data;
+    const data = new Float32Array(SIZE * SIZE * 3);
+    for (let i = 0, j = 0; i < rgba.length; i += 4) {
+      data[j++] = rgba[i]; data[j++] = rgba[i + 1]; data[j++] = rgba[i + 2];
+    }
+    return new ort.Tensor("float32", data, [1, SIZE, SIZE, 3]);
+  }
+
+  function show(probs) {
+    const best = probs[0] >= probs[1] ? 0 : 1;
+    const name = CLASSES[best];
+    const conf = probs[best] * 100;
+    const v = $("verdict");
+    v.textContent = (name === "lake" ? "🏞️ " : "🌊 ") + name[0].toUpperCase() + name.slice(1);
+    v.className = "verdict " + name;
+    $("sub").textContent = conf >= 80
+      ? `The model is ${conf.toFixed(1)}% sure this is ${name === "lake" ? "a lake" : "an ocean"}.`
+      : `Not very sure (${conf.toFixed(1)}%). This photo looks a bit like both.`;
+    CLASSES.forEach((c, i) => {
+      const pct = probs[i] * 100;
+      $("p-" + c).textContent = pct > 0 && pct < 0.01 ? "<0.01%" : pct.toFixed(pct < 1 ? 2 : 1) + "%";
+      $("f-" + c).style.width = pct.toFixed(2) + "%";
+    });
+  }
+
+  async function classify(src) {
+    try {
+      setStatus("Classifying…");
+      const img = new Image();
+      img.decoding = "async";
+      img.src = src;
+      await img.decode();
+      preview.src = src; preview.hidden = false; hint.hidden = true;
+      await ready;
+      const t0 = performance.now();
+      const out = await session.run({ image: toTensor(img) });
+      const probs = Array.from(out.probs.data);
+      show(probs);
+      setStatus(`Done in ${Math.round(performance.now() - t0)} ms`);
+      window.__lastProbs = probs;   // handy for checking in the browser console
+    } catch (e) {
+      console.error(e);
+      setStatus("Couldn't read that image. Try a JPG or PNG photo.", true);
+    }
+  }
+
+  function handleFile(f) {
+    if (!f || !f.type.startsWith("image/")) { setStatus("Please choose an image file.", true); return; }
+    classify(URL.createObjectURL(f));
+  }
+
+  // ---- UI wiring ----
+  $("choose").onclick = () => file.click();
+  drop.onclick = () => file.click();
+  drop.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); file.click(); } };
+  file.onchange = () => { handleFile(file.files[0]); file.value = ""; };
+  ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("drag"); }));
+  ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("drag"); }));
+  drop.addEventListener("drop", (e) => handleFile(e.dataTransfer.files[0]));
+  window.addEventListener("paste", (e) => {
+    const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith("image/"));
+    if (item) handleFile(item.getAsFile());
+  });
+
+  const exWrap = $("examples");
+  EXAMPLES.forEach((f) => {
+    const b = document.createElement("button");
+    b.className = "ex";
+    b.setAttribute("aria-label", "Classify example " + f);
+    b.innerHTML = `<img src="examples/${f}" alt="" loading="lazy"><span>${f.split("_")[0]}</span>`;
+    b.onclick = () => { classify("examples/" + f); window.scrollTo({ top: 0, behavior: "smooth" }); };
+    exWrap.appendChild(b);
+  });
+  $("random").onclick = () => classify("examples/" + EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)]);
+})();
+</script>
+</body>
+</html>
