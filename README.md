@@ -3,7 +3,7 @@
 A convolutional neural network that tells **lake** photos from **ocean** photos and gives the percentage for each class.
 Made for the Machine Learning Classification Project, KMITL.
 
-**🔗 Live demo:** https://YOUR-USERNAME.github.io/lake-ocean-classifier/
+**🔗 Live demo:** https://tnnumb.github.io/lake-ocean-classifier/
 The model runs directly in the browser, so photos are never uploaded.
 
 **📓 Notebook:** [Open in Google Colab](https://colab.research.google.com/github/YOUR-USERNAME/lake-ocean-classifier/blob/main/notebook/Lake_vs_Ocean_CNN.ipynb)
