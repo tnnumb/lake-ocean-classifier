@@ -159,16 +159,16 @@
       <div class="stat"><b>45</b><span>Epochs (30 + 15 fine-tuning)</span></div>
     </div>
     <figure>
-      <img src="figures/test_predictions.png" alt="Grid of the 8 test images with predicted class and percentages; all correct" loading="lazy">
+      <img src="test_predictions.png" alt="Grid of the 8 test images with predicted class and percentages; all correct" loading="lazy">
       <figcaption>Predictions on the 8 test images. Green = correct.</figcaption>
     </figure>
     <div class="two">
       <figure>
-        <img src="figures/training_curves.png" alt="Training and validation accuracy and loss over 45 epochs" loading="lazy">
+        <img src="training_curves.png" alt="Training and validation accuracy and loss over 45 epochs" loading="lazy">
         <figcaption>Accuracy and loss for each epoch. The dashed line is where fine-tuning starts.</figcaption>
       </figure>
       <figure>
-        <img src="figures/confusion_validation.png" alt="Validation confusion matrix with all 22 images correct" loading="lazy">
+        <img src="confusion_validation.png" alt="Validation confusion matrix with all 22 images correct" loading="lazy">
         <figcaption>Validation confusion matrix.</figcaption>
       </figure>
     </div>
@@ -194,7 +194,7 @@
 <footer>
   <div class="wrap">
     Machine Learning Classification Project · King Mongkut's Institute of Technology Ladkrabang (KMITL) ·
-    <a href="notebook/Lake_vs_Ocean_CNN.ipynb">Colab notebook</a> ·
+    <a href="Lake_vs_Ocean_CNN.ipynb">Colab notebook</a> ·
     Runs with <a href="https://onnxruntime.ai/" rel="noopener">ONNX Runtime Web</a>
   </div>
 </footer>
@@ -224,7 +224,7 @@
     if (typeof ort === "undefined") throw new Error("ONNX Runtime didn't load (check your internet connection).");
     ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/";
     ort.env.wasm.numThreads = 1;
-    session = await ort.InferenceSession.create("model/model.onnx", { executionProviders: ["wasm"] });
+    session = await ort.InferenceSession.create("model.onnx", { executionProviders: ["wasm"] });
     setStatus("Model ready ✓ (runs in your browser)");
   })().catch((e) => {
     console.error(e);
@@ -315,11 +315,11 @@
     const b = document.createElement("button");
     b.className = "ex";
     b.setAttribute("aria-label", "Classify example " + f);
-    b.innerHTML = `<img src="examples/${f}" alt="" loading="lazy"><span>${f.split("_")[0]}</span>`;
-    b.onclick = () => { classify("examples/" + f); window.scrollTo({ top: 0, behavior: "smooth" }); };
+    b.innerHTML = `<img src="${f}" alt="" loading="lazy"><span>${f.split("_")[0]}</span>`;
+    b.onclick = () => { classify(f); window.scrollTo({ top: 0, behavior: "smooth" }); };
     exWrap.appendChild(b);
   });
-  $("random").onclick = () => classify("examples/" + EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)]);
+  $("random").onclick = () => classify(EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)]);
 })();
 </script>
 </body>
