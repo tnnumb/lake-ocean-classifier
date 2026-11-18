@@ -3,12 +3,15 @@
 A convolutional neural network that tells **lake** photos from **ocean** photos and gives the percentage for each class.
 Made for the Machine Learning Classification Project, KMITL.
 
-**🔗 Live demo:** https://tnnumb.github.io/lake-ocean-classifier/
-The model runs directly in the browser, so photos are never uploaded.
+**🔗 Web app (Streamlit):** https://lake-ocean-classifier-glc7ome7lwcokmzq2vg6wj.streamlit.app
+If it says *"This app has gone to sleep"*, click **Yes, get this app back up!** and wait about a minute.
 
-**📓 Notebook:** [Open in Google Colab](https://colab.research.google.com/github/YOUR-USERNAME/lake-ocean-classifier/blob/main/notebook/Lake_vs_Ocean_CNN.ipynb)
+**🔗 Backup web app (GitHub Pages, never sleeps):** https://tnnumb.github.io/lake-ocean-classifier/
+This version runs the model inside your browser with ONNX Runtime Web, so your photo is never uploaded.
 
-![Test predictions](figures/test_predictions.png)
+**📓 Notebook:** [Open in Google Colab](https://colab.research.google.com/github/tnnumb/lake-ocean-classifier/blob/main/Lake_vs_Ocean_CNN.ipynb)
+
+![Test predictions](test_predictions.png)
 
 ## Results
 
@@ -28,7 +31,11 @@ The model runs directly in the browser, so photos are never uploaded.
 | ocean_test_3 | 4.5 | 95.5 | ✅ ocean |
 | ocean_test_4 | 0.1 | 99.9 | ✅ ocean |
 
-![Training curves](figures/training_curves.png)
+These are the notebook results. The web apps read the original JPG files instead of the re-saved copies the notebook used, so a few percentages differ by a few tenths of a percent (for example ocean_test_3: 94.8% ocean). Every predicted class is the same.
+
+![Training curves](training_curves.png)
+
+![Validation confusion matrix](confusion_validation.png)
 
 ## Model
 
@@ -54,18 +61,20 @@ Transfer learning: a CNN pre-trained on ImageNet (MobileNetV2) with a new classi
 
 ## Files
 
-| Path | What it is |
+| File | What it is |
 |---|---|
-| `index.html` | The webpage (GitHub Pages) |
-| `model/model.onnx` | Trained model in ONNX format, used by the webpage |
-| `model/lake_ocean_model.keras` | Trained Keras model |
-| `notebook/Lake_vs_Ocean_CNN.ipynb` | Google Colab notebook: training, testing, Gradio demo |
-| `examples/` | The 8 test images |
-| `figures/` | Training curves, confusion matrix, test predictions |
+| `streamlit_app.py` | The Streamlit web app |
+| `requirements.txt` | Libraries for the Streamlit app |
+| `index.html` | The backup webpage (GitHub Pages, runs in the browser) |
+| `model.onnx` | Trained model in ONNX format, used by both web apps |
+| `lake_ocean_model.keras` | Trained Keras model |
+| `Lake_vs_Ocean_CNN.ipynb` | Google Colab notebook: data cleaning, training, testing |
+| `lake_test_*.jpg`, `ocean_test_*.jpg` | The 8 test images |
+| `training_curves.png`, `confusion_validation.png`, `test_predictions.png` | Result figures |
 
 ## Run it yourself
 
 1. Open the notebook in Google Colab (link above) and choose **Runtime → Change runtime type → T4 GPU**.
 2. **Runtime → Run all**, then upload a zip of the image folder when asked.
 
-Built with TensorFlow / Keras, Google Colab and ONNX Runtime Web.
+Built with TensorFlow / Keras, Google Colab, ONNX Runtime and Streamlit.
